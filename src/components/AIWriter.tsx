@@ -281,7 +281,7 @@ const parseTitleFromText = (text: string, branchName: string): string => {
 };
 
 export const AIWriter: React.FC<AIWriterProps> = ({ onAddEvent, setActiveTab, userRole, events }) => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+  const isServerAiEnabled = true;
 
   // Config states
   const [branch, setBranch] = useState('');
@@ -539,10 +539,10 @@ ${formattedBranch}은 입시 흐름에 발맞춰 학생 개인별 취약점을 �
       }
     }
 
-    if (apiKey) {
-      // 실제 Gemini-3.1-flash-lite API 연동 모드
+    if (isServerAiEnabled) {
+      // Vercel 서버 함수를 통해 Gemini API 키를 숨긴 상태로 호출
       try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`, {
+        const response = await fetch('/api/generate-article', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -791,12 +791,12 @@ ${generated.content}`;
             기사 생성 조건 설정
           </h3>
 
-          <div className={`api-status-tip ${apiKey ? 'active' : 'fallback'}`}>
+          <div className={`api-status-tip ${isServerAiEnabled ? 'active' : 'fallback'}`}>
             <span className="status-dot"></span>
             <span className="status-text">
-              {apiKey 
-                ? '실시간 Gemini 3.1 Flash Lite AI 모드 활성화' 
-                : '로컬 시뮬레이션 작동 중 (.env 파일에 VITE_GEMINI_API_KEY 설정 시 실제 AI 작동)'}
+              {isServerAiEnabled
+                ? '보안 서버를 통한 실시간 Gemini AI 모드 활성화'
+                : '로컬 시뮬레이션 작동 중'}
             </span>
           </div>
 

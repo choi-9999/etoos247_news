@@ -68,8 +68,8 @@ create policy "Allow public delete for everyone" on etoos_news_events
 Supabase 대시보드의 **Project Settings** -> **API** 메뉴에서 아래 값을 복사하여 프로젝트 루트 폴더의 `.env` 파일에 덮어씌워 줍니다.
 
 ```env
-# Google AI Studio Gemini API Key
-VITE_GEMINI_API_KEY=your-gemini-api-key
+# Google AI Studio Gemini API Key (server-side only)
+GEMINI_API_KEY=your-gemini-api-key
 
 # Supabase 연동 정보
 VITE_SUPABASE_URL=https://<your-project-reference>.supabase.co
