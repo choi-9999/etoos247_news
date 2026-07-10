@@ -1530,6 +1530,117 @@ body.light-theme .custom-alert-icon {
   to { opacity: 1; }
 }
 
+/* ==========================================
+   Admin Approval Panel Premium Redesign
+   ========================================== */
+.admin-approval-panel {
+  margin-top: 24px;
+  padding: 20px;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 107, 0, 0.25);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
+}
+
+body.light-theme .admin-approval-panel {
+  background: rgba(241, 245, 249, 0.6);
+  border-color: rgba(255, 107, 0, 0.3);
+}
+
+.admin-approval-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: -0.02em;
+}
+
+.admin-approval-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+/* Custom Dropdown Wrapper */
+.admin-status-select-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.admin-status-dropdown {
+  width: 100%;
+  padding: 11px 16px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border: 1.5px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 40px; /* Space for arrow */
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+
+.admin-status-dropdown:hover {
+  border-color: var(--color-primary);
+  background: rgba(255, 107, 0, 0.03);
+}
+
+.admin-status-dropdown:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.15);
+}
+
+/* Custom Dropdown Arrow */
+.admin-status-select-wrapper .select-arrow {
+  position: absolute;
+  right: 16px;
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  pointer-events: none;
+  transition: transform 0.2s ease;
+}
+
+.admin-status-dropdown:focus + .select-arrow {
+  transform: rotate(180deg);
+  color: var(--color-primary);
+}
+
+/* Status helper list */
+.admin-status-help-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-status-help-list li {
+  font-size: 0.775rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  list-style-type: disc;
+  word-break: keep-all;
+}
+
+body.light-theme .admin-status-help-list li {
+  color: #475569;
+}
+
+
 @keyframes alertScaleIn {
   from { transform: scale(0.92); opacity: 0; }
   to { transform: scale(1); opacity: 1; }

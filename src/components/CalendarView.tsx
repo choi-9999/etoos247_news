@@ -1218,44 +1218,36 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                         {userRole === 'admin' && (
                           <div className="admin-approval-panel">
                             <div className="admin-approval-title">본사 기사 결재 및 송출 관리</div>
-                            <div className="admin-approval-actions" style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
-                              <select 
-                                className="admin-status-dropdown"
-                                value={evt.status}
-                                onChange={(e) => {
-                                  const newStatus = e.target.value as any;
-                                  if (newStatus === 'completed') {
-                                    setCompleteNewsUrl('');
-                                    setCompleteImageUrl('');
-                                    setCompletionModal({
-                                      isOpen: true,
-                                      eventId: evt.id
-                                    });
-                                  } else {
-                                    onUpdateEventStatus(evt.id, newStatus);
-                                  }
-                                }}
-                                style={{
-                                  width: '100%',
-                                  padding: '10px',
-                                  fontSize: '0.9rem',
-                                  fontWeight: '600',
-                                  borderRadius: '8px',
-                                  border: '1px solid var(--accent)',
-                                  background: 'var(--bg-card)',
-                                  color: 'var(--text-primary)',
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                <option value="pending">⏳ 승인대기 (pending)</option>
-                                <option value="approved">🟢 송출예정 (approved)</option>
-                                <option value="completed">📰 송출완료 (completed)</option>
-                                <option value="rejected">❌ 반려 (rejected)</option>
-                              </select>
-                              <div className="admin-status-help" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                * 상태 값을 변경하면 Supabase 및 캘린더 화면에 실시간으로 반영됩니다.<br />
-                                * '송출완료'를 선택하면 실제 보도 기사 URL을 등록할 수 있는 창이 나타납니다.
+                            <div className="admin-approval-actions">
+                              <div className="admin-status-select-wrapper">
+                                <select 
+                                  className="admin-status-dropdown"
+                                  value={evt.status}
+                                  onChange={(e) => {
+                                    const newStatus = e.target.value as any;
+                                    if (newStatus === 'completed') {
+                                      setCompleteNewsUrl('');
+                                      setCompleteImageUrl('');
+                                      setCompletionModal({
+                                        isOpen: true,
+                                        eventId: evt.id
+                                      });
+                                    } else {
+                                      onUpdateEventStatus(evt.id, newStatus);
+                                    }
+                                  }}
+                                >
+                                  <option value="pending">⏳ 승인대기 (pending)</option>
+                                  <option value="approved">🟢 송출예정 (approved)</option>
+                                  <option value="completed">📰 송출완료 (completed)</option>
+                                  <option value="rejected">❌ 반려 (rejected)</option>
+                                </select>
+                                <span className="select-arrow">▼</span>
                               </div>
+                              <ul className="admin-status-help-list">
+                                <li>상태 값을 변경하면 데이터베이스 및 캘린더 화면에 실시간으로 반영됩니다.</li>
+                                <li>'송출완료'를 선택하면 실제 보도 기사 URL을 등록할 수 있는 창이 나타납니다.</li>
+                              </ul>
                             </div>
                           </div>
                         )}
