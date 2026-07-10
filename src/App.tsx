@@ -71,7 +71,7 @@ function App() {
                 status: evt.status,
                 category: evt.category || '이벤트/소식',
                 mediaAttachments: evt.mediaAttachments || [],
-              }).single();
+              });
             }
           }
 
@@ -100,9 +100,13 @@ function App() {
             });
           }
           console.log('로컬 데이터 DB 업로드 완료');
+          setEvents(localEvents); // 상태 업데이트 추가
         }
       } catch (err) {
         console.error('Supabase 데이터 가져오기 실패, 로컬 백업 데이터를 사용합니다:', err);
+        const savedLocal = localStorage.getItem('calendarEvents');
+        const fallback = savedLocal ? JSON.parse(savedLocal) : initialEvents;
+        setEvents(fallback); // 폴백 복구 추가
       }
     };
 
