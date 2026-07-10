@@ -3,11 +3,12 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-const isConfigured = 
+export const isConfigured = !!(
   supabaseUrl && 
   !supabaseUrl.includes('your-project-id') && 
   supabaseAnonKey && 
-  !supabaseAnonKey.includes('your-anon-key');
+  !supabaseAnonKey.includes('your-anon-key')
+);
 
 // Fallback 방어용 경고 문구 출력
 if (!isConfigured) {

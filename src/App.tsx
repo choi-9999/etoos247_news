@@ -6,17 +6,11 @@ import type { CalendarEvent } from './components/CalendarView';
 import { AIWriter } from './components/AIWriter';
 import { ArticleShowcase } from './components/ArticleShowcase';
 import { Dashboard } from './components/Dashboard';
-import { supabase } from './lib/supabaseClient';
+import { supabase, isConfigured as isSupabaseConfigured } from './lib/supabaseClient';
 import initialEventsData from './data/eventsData.json';
 import './App.css';
 
 const initialEvents: CalendarEvent[] = initialEventsData as CalendarEvent[];
-
-const isSupabaseConfigured = 
-  import.meta.env.VITE_SUPABASE_URL && 
-  !import.meta.env.VITE_SUPABASE_URL.includes('your-project-id') &&
-  import.meta.env.VITE_SUPABASE_ANON_KEY &&
-  !import.meta.env.VITE_SUPABASE_ANON_KEY.includes('your-anon-key');
 
 function App() {
   const [activeTab, setActiveTab] = useState<string>('articles');
