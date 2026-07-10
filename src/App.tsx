@@ -14,7 +14,20 @@ const initialEvents: CalendarEvent[] = initialEventsData as CalendarEvent[];
 
 function App() {
   const [activeTab, setActiveTab] = useState<string>('articles');
-  const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
+  const [events, setEvents] = useState<CalendarEvent[]>(() => {
+    // Supabase가 미설정 상태일 때만 localStorage를 백업으로 조회
+    const isConfigured = 
+      import.meta.env.VITE_SUPABASE_URL && 
+      !import.meta.env.VITE_SUPABASE_URL.includes('your-project-id') &&
+      import.meta.env.VITE_SUPABASE_ANON_KEY &&
+      !import.meta.env.VITE_SUPABASE_ANON_KEY.includes('your-anon-key');
+
+    if (!isConfigured) {
+      const saved = localStorage.getItem('calendarEvents');
+      return saved ? JSON.parse(saved) : initialEvents;
+    }
+    return initialEvents;
+  });
   const [userRole, setUserRole] = useState<'admin' | 'branch'>('branch');
   const [userBranch] = useState<string>('서울강남점');
   const [featuredArticleIds, setFeaturedArticleIds] = useState<string[]>(() => {
@@ -62,6 +75,13 @@ function App() {
       document.body.classList.remove('light-theme');
     }
   }, [theme]);
+
+  // Supabase가 연결되지 않은 임시 로컬 모드일 때만 예외적으로 상태값을 브라우저 캐시에 백업
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      localStorage.setItem('calendarEvents', JSON.stringify(events));
+    }
+  }, [events]);
 
 
 
