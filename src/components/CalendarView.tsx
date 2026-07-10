@@ -1190,7 +1190,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                                   type="button"
                                   className="btn btn-complete"
                                   onClick={() => {
-                                    setCompleteNewsUrl('https://search.naver.com/search.naver?where=news&query=%EC%9D%B4%ED%88%AC%EC%8A%A4247');
+                                    setCompleteNewsUrl('');
                                     setCompleteImageUrl('');
                                     setCompletionModal({
                                       isOpen: true,
