@@ -14,10 +14,7 @@ const initialEvents: CalendarEvent[] = initialEventsData as CalendarEvent[];
 
 function App() {
   const [activeTab, setActiveTab] = useState<string>('articles');
-  const [events, setEvents] = useState<CalendarEvent[]>(() => {
-    const saved = localStorage.getItem('calendarEvents');
-    return saved ? JSON.parse(saved) : initialEvents;
-  });
+  const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
   const [userRole, setUserRole] = useState<'admin' | 'branch'>('branch');
   const [userBranch] = useState<string>('서울강남점');
   const [featuredArticleIds, setFeaturedArticleIds] = useState<string[]>(() => {
@@ -43,64 +40,12 @@ function App() {
         if (error) throw error;
 
         if (data && data.length > 0) {
-          // DB 데이터와 로컬 전용 이벤트를 병합 (덮어쓰지 않고 합치기)
-          const dbIds = new Set(data.map((e: CalendarEvent) => e.id));
-          const savedLocal = localStorage.getItem('calendarEvents');
-          const localEvents: CalendarEvent[] = savedLocal ? JSON.parse(savedLocal) : [];
-          // 로컬에만 있고 DB에 없는 이벤트 (아직 미싱크 이벤트)
-          const localOnlyEvents = localEvents.filter(e => !dbIds.has(e.id));
-
-          if (localOnlyEvents.length > 0) {
-            console.log(`로컬 전용 미동기화 이벤트 ${localOnlyEvents.length}건 → DB에 백필 중...`);
-            for (const evt of localOnlyEvents) {
-              // 핵심 컬럼만으로 안전하게 INSERT
-              await supabase.from('etoos_news_events').insert({
-                id: evt.id,
-                title: evt.title,
-                content: evt.content || '',
-                date: evt.date,
-                time: evt.time || '10:00',
-                branch: evt.branch,
-                media: evt.media || ['네이버뉴스'],
-                status: evt.status,
-                category: evt.category || '이벤트/소식',
-                mediaAttachments: evt.mediaAttachments || [],
-              });
-            }
-          }
-
-          // DB 데이터 + 로컬 전용 이벤트 병합 후 상태 갱신
-          const merged = [...data as CalendarEvent[], ...localOnlyEvents];
-          merged.sort((a, b) => a.date.localeCompare(b.date));
-          setEvents(merged);
-        } else {
-          // DB가 비어있는 최초 실행 시, 현재 로컬 데이터를 DB에 업로드
-          const savedLocal = localStorage.getItem('calendarEvents');
-          const localEvents: CalendarEvent[] = savedLocal ? JSON.parse(savedLocal) : initialEvents;
-          console.log(`Supabase DB가 비어있어 로컬 데이터 ${localEvents.length}건을 업로드합니다.`);
-
-          for (const evt of localEvents) {
-            await supabase.from('etoos_news_events').insert({
-              id: evt.id,
-              title: evt.title,
-              content: evt.content || '',
-              date: evt.date,
-              time: evt.time || '10:00',
-              branch: evt.branch,
-              media: evt.media || ['네이버뉴스'],
-              status: evt.status,
-              category: evt.category || '이벤트/소식',
-              mediaAttachments: evt.mediaAttachments || [],
-            });
-          }
-          console.log('로컬 데이터 DB 업로드 완료');
-          setEvents(localEvents); // 상태 업데이트 추가
+          // 오직 Supabase DB 데이터만 표시 (로컬 스토리지 병합 및 백필 생략)
+          setEvents(data as CalendarEvent[]);
         }
       } catch (err) {
-        console.error('Supabase 데이터 가져오기 실패, 로컬 백업 데이터를 사용합니다:', err);
-        const savedLocal = localStorage.getItem('calendarEvents');
-        const fallback = savedLocal ? JSON.parse(savedLocal) : initialEvents;
-        setEvents(fallback); // 폴백 복구 추가
+        console.error('Supabase 데이터 가져오기 실패, 기본 기사 데이터를 로드합니다:', err);
+        setEvents(initialEvents);
       }
     };
 
@@ -154,9 +99,7 @@ function App() {
     }
   }, [theme]);
 
-  useEffect(() => {
-    localStorage.setItem('calendarEvents', JSON.stringify(events));
-  }, [events]);
+
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
