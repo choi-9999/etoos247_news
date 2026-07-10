@@ -52,43 +52,7 @@ function App() {
     fetchSupabaseEvents();
   }, []);
 
-  // 송출 완료(completed) -> 송출 예정(approved) 일괄 일회성 마이그레이션 훅
-  // ※ localStorage 플래그로 최초 1회만 실행 (F5 시 반복 실행 방지)
-  useEffect(() => {
-    const MIGRATION_KEY = 'migration_completed_to_approved_v1_done';
-    if (localStorage.getItem(MIGRATION_KEY)) return; // 이미 실행됨 → 스킵
 
-    const migrateStatus = async () => {
-      // 1. 로컬 상태 일괄 변경
-      setEvents((prev) => {
-        const hasCompleted = prev.some(e => e.status === 'completed');
-        if (hasCompleted) {
-          console.log('로컬 상태: 송출 완료(completed) 기사 일괄 복원 진행');
-          return prev.map(e => e.status === 'completed' ? { ...e, status: 'approved' } : e);
-        }
-        return prev;
-      });
-
-      // 2. Supabase DB 설정 시 DB 상태 일괄 변경
-      if (isSupabaseConfigured) {
-        try {
-          const { error } = await supabase
-            .from('etoos_news_events')
-            .update({ status: 'approved' })
-            .eq('status', 'completed');
-          if (error) throw error;
-          console.log('Supabase DB: 송출 완료 기사 일괄 복원 완료');
-        } catch (err) {
-          console.error('Supabase DB 일괄 복원 오류:', err);
-        }
-      }
-
-      // 완료 플래그 저장 (다음 F5부터 스킵)
-      localStorage.setItem(MIGRATION_KEY, 'true');
-    };
-
-    migrateStatus();
-  }, []);
 
   useEffect(() => {
     localStorage.setItem('theme', theme);
