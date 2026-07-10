@@ -1,0 +1,375 @@
+import { useState, useEffect } from 'react';
+import { Header } from './components/Header';
+import { Footer } from './components/Footer';
+import { CalendarView } from './components/CalendarView';
+import type { CalendarEvent } from './components/CalendarView';
+import { AIWriter } from './components/AIWriter';
+import { ArticleShowcase } from './components/ArticleShowcase';
+import { Dashboard } from './components/Dashboard';
+import { supabase } from './lib/supabaseClient';
+import initialEventsData from './data/eventsData.json';
+import './App.css';
+
+const initialEvents: CalendarEvent[] = initialEventsData as CalendarEvent[];
+
+const isSupabaseConfigured = 
+  import.meta.env.VITE_SUPABASE_URL && 
+  !import.meta.env.VITE_SUPABASE_URL.includes('your-project-id') &&
+  import.meta.env.VITE_SUPABASE_ANON_KEY &&
+  !import.meta.env.VITE_SUPABASE_ANON_KEY.includes('your-anon-key');
+
+function App() {
+  const [activeTab, setActiveTab] = useState<string>('articles');
+  const [events, setEvents] = useState<CalendarEvent[]>(() => {
+    const saved = localStorage.getItem('calendarEvents');
+    return saved ? JSON.parse(saved) : initialEvents;
+  });
+  const [userRole, setUserRole] = useState<'admin' | 'branch'>('branch');
+  const [userBranch] = useState<string>('서울강남점');
+  const [featuredArticleIds, setFeaturedArticleIds] = useState<string[]>(() => {
+    const saved = localStorage.getItem('featuredArticleIds');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    const saved = localStorage.getItem('theme');
+    return (saved === 'light' || saved === 'dark') ? saved : 'dark';
+  });
+
+  // Supabase 실시간 데이터 동기화 fetch
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    const fetchSupabaseEvents = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('etoos_news_events')
+          .select('*')
+          .order('date', { ascending: true });
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          // DB에 데이터가 존재하면 로컬 상태 갱신
+          setEvents(data as CalendarEvent[]);
+        } else {
+          // DB가 비어있는 최초 실행 시, 초기 Mock 데이터를 DB에 삽입 (벌크 업로드)
+          console.log('Supabase DB가 비어있어 초기 데이터를 업로드합니다.');
+          const cleanInitialEvents = initialEvents.map(e => ({
+            id: e.id,
+            title: e.title,
+            content: e.content || '',
+            date: e.date,
+            time: e.time || '10:00',
+            branch: e.branch,
+            media: e.media || ['네이버뉴스'],
+            status: e.status,
+            createdDate: e.createdDate || e.date,
+            attachmentType: e.attachmentType || 'none',
+            attachmentName: e.attachmentName || '',
+            category: e.category || '이벤트/소식',
+            mediaAttachments: e.mediaAttachments || [],
+            newsUrl: e.newsUrl || null,
+            articleCategory: e.articleCategory || null,
+            articleCategoryLabel: e.articleCategoryLabel || null,
+            categoryLabel: e.categoryLabel || null,
+            articleImage: e.articleImage || null
+          }));
+
+          const { error: insertError } = await supabase
+            .from('etoos_news_events')
+            .insert(cleanInitialEvents);
+
+          if (insertError) {
+            console.error('초기 데이터 DB 업로드 실패:', insertError);
+          } else {
+            console.log('초기 데이터 DB 업로드 성공');
+          }
+        }
+      } catch (err) {
+        console.error('Supabase 데이터 가져오기 실패, 로컬 백업 데이터를 사용합니다:', err);
+      }
+    };
+
+    fetchSupabaseEvents();
+  }, []);
+
+  // 송출 완료(completed) -> 송출 예정(approved) 일괄 일회성 마이그레이션 훅
+  useEffect(() => {
+    const migrateStatus = async () => {
+      // 1. 로컬 상태 일괄 변경
+      setEvents((prev) => {
+        const hasCompleted = prev.some(e => e.status === 'completed');
+        if (hasCompleted) {
+          console.log('로컬 상태: 송출 완료(completed) 기사 일괄 복원 진행');
+          return prev.map(e => e.status === 'completed' ? { ...e, status: 'approved' } : e);
+        }
+        return prev;
+      });
+
+      // 2. Supabase DB 설정 시 DB 상태 일괄 변경
+      if (isSupabaseConfigured) {
+        try {
+          const { error } = await supabase
+            .from('etoos_news_events')
+            .update({ status: 'approved' })
+            .eq('status', 'completed');
+          if (error) throw error;
+          console.log('Supabase DB: 송출 완료 기사 일괄 복원 완료');
+        } catch (err) {
+          console.error('Supabase DB 일괄 복원 오류:', err);
+        }
+      }
+    };
+
+    migrateStatus();
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('theme', theme);
+    if (theme === 'light') {
+      document.body.classList.add('light-theme');
+    } else {
+      document.body.classList.remove('light-theme');
+    }
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem('calendarEvents', JSON.stringify(events));
+  }, [events]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
+
+  const handleAddEvent = async (newEvent: CalendarEvent) => {
+    setEvents((prev) => [...prev, newEvent]);
+
+    if (isSupabaseConfigured) {
+      try {
+        const { error } = await supabase.from('etoos_news_events').insert({
+          id: newEvent.id,
+          title: newEvent.title,
+          content: newEvent.content || '',
+          date: newEvent.date,
+          time: newEvent.time || '10:00',
+          branch: newEvent.branch,
+          media: newEvent.media || ['네이버뉴스'],
+          status: newEvent.status,
+          createdDate: newEvent.createdDate || newEvent.date,
+          attachmentType: newEvent.attachmentType || 'none',
+          attachmentName: newEvent.attachmentName || '',
+          category: newEvent.category || '이벤트/소식',
+          mediaAttachments: newEvent.mediaAttachments || [],
+          newsUrl: newEvent.newsUrl || null,
+          articleCategory: newEvent.articleCategory || null,
+          articleCategoryLabel: newEvent.articleCategoryLabel || null,
+          categoryLabel: newEvent.categoryLabel || null,
+          articleImage: newEvent.articleImage || null
+        });
+        if (error) throw error;
+      } catch (err) {
+        console.error('Supabase DB 추가 실패:', err);
+      }
+    }
+  };
+
+  const handleDeleteEvent = async (id: string) => {
+    const targetEvent = events.find(e => e.id === id);
+    setEvents((prev) => prev.filter(e => e.id !== id));
+
+    if (isSupabaseConfigured) {
+      try {
+        // C방법: 스토리지 물리 파일 연쇄 삭제
+        if (targetEvent && targetEvent.mediaAttachments && targetEvent.mediaAttachments.length > 0) {
+          const filesToDelete = targetEvent.mediaAttachments
+            .filter(attach => attach.url)
+            .map(attach => attach.url!.split('/').pop() || '')
+            .filter(name => name !== '');
+
+          if (filesToDelete.length > 0) {
+            const { error: storageErr } = await supabase.storage
+              .from('etoos-news')
+              .remove(filesToDelete);
+            
+            if (storageErr) {
+              console.error('스토리지 파일 연쇄 삭제 실패:', storageErr.message);
+            } else {
+              console.log('스토리지 파일 연쇄 삭제 완료:', filesToDelete);
+            }
+          }
+        }
+
+        const { error } = await supabase.from('etoos_news_events').delete().eq('id', id);
+        if (error) throw error;
+      } catch (err) {
+        console.error('Supabase DB 삭제 실패:', err);
+      }
+    }
+  };
+
+  const handleCleanupPastEvents = async (pastEventIds: string[], filesToDelete: string[]) => {
+    // 1. 로컬 상태 갱신 (mediaAttachments 비우고 스펙 초기화)
+    setEvents((prev) =>
+      prev.map((e) =>
+        pastEventIds.includes(e.id)
+          ? { ...e, mediaAttachments: [], attachmentType: 'none', attachmentName: '' }
+          : e
+      )
+    );
+
+    if (isSupabaseConfigured) {
+      try {
+        // 2. Supabase Storage 물리 파일 삭제
+        if (filesToDelete.length > 0) {
+          const { error: storageErr } = await supabase.storage
+            .from('etoos-news')
+            .remove(filesToDelete);
+          
+          if (storageErr) throw storageErr;
+        }
+
+        // 3. Supabase DB 레코드 일괄 업데이트
+        const updatePromises = pastEventIds.map(id => 
+          supabase
+            .from('etoos_news_events')
+            .update({
+              mediaAttachments: [],
+              attachmentType: 'none',
+              attachmentName: ''
+            })
+            .eq('id', id)
+        );
+
+        await Promise.all(updatePromises);
+        console.log('30일 경과 스토리지 일괄 청소 완료');
+      } catch (err) {
+        console.error('스토리지 일괄 청소 실패:', err);
+        throw err;
+      }
+    }
+  };
+
+  const handleUpdateEventStatus = async (
+    id: string, 
+    newStatus: 'pending' | 'approved' | 'completed' | 'rejected',
+    newsUrl?: string,
+    articleImage?: string
+  ) => {
+    setEvents((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, status: newStatus, newsUrl: newsUrl || e.newsUrl, articleImage: articleImage || e.articleImage } : e))
+    );
+
+    if (isSupabaseConfigured) {
+      try {
+        const targetEvent = events.find(e => e.id === id);
+        const { error } = await supabase
+          .from('etoos_news_events')
+          .update({ 
+            status: newStatus, 
+            newsUrl: newsUrl || (targetEvent ? targetEvent.newsUrl : null),
+            articleImage: articleImage || (targetEvent ? targetEvent.articleImage : null)
+          })
+          .eq('id', id);
+        if (error) throw error;
+      } catch (err) {
+        console.error('Supabase DB 상태 갱신 실패:', err);
+      }
+    }
+  };
+
+  const handleUpdateEventDate = async (id: string, newDate: string) => {
+    setEvents((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, date: newDate } : e))
+    );
+
+    if (isSupabaseConfigured) {
+      try {
+        const { error } = await supabase
+          .from('etoos_news_events')
+          .update({ date: newDate })
+          .eq('id', id);
+        if (error) throw error;
+      } catch (err) {
+        console.error('Supabase DB 날짜 갱신 실패:', err);
+      }
+    }
+  };
+
+  const handleUpdateEventTitle = async (id: string, newTitle: string) => {
+    setEvents((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, title: newTitle } : e))
+    );
+
+    if (isSupabaseConfigured) {
+      try {
+        const { error } = await supabase
+          .from('etoos_news_events')
+          .update({ title: newTitle })
+          .eq('id', id);
+        if (error) throw error;
+      } catch (err) {
+        console.error('Supabase DB 제목 갱신 실패:', err);
+      }
+    }
+  };
+
+  const handleUpdateFeaturedArticles = (ids: string[]) => {
+    setFeaturedArticleIds(ids);
+    localStorage.setItem('featuredArticleIds', JSON.stringify(ids));
+  };
+
+  return (
+    <div className="app-container">
+      <Header 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        userRole={userRole}
+        setUserRole={setUserRole}
+        theme={theme}
+        toggleTheme={toggleTheme}
+      />
+      
+      <main className="main-content">
+        {activeTab === 'calendar' && (
+          <CalendarView 
+            events={events} 
+            onAddEvent={handleAddEvent} 
+            onDeleteEvent={handleDeleteEvent} 
+            userRole={userRole}
+            userBranch={userBranch}
+            onUpdateEventStatus={handleUpdateEventStatus}
+            onUpdateEventDate={handleUpdateEventDate}
+            onUpdateEventTitle={handleUpdateEventTitle}
+            onCleanupPastEvents={handleCleanupPastEvents}
+          />
+        )}
+        {activeTab === 'writer' && (
+          <AIWriter 
+            onAddEvent={handleAddEvent} 
+            setActiveTab={setActiveTab} 
+            userRole={userRole}
+            events={events}
+          />
+        )}
+        {activeTab === 'articles' && (
+          <ArticleShowcase 
+            setActiveTab={setActiveTab} 
+            events={events}
+            featuredArticleIds={featuredArticleIds}
+          />
+        )}
+        {activeTab === 'dashboard' && userRole === 'admin' && (
+          <Dashboard 
+            events={events} 
+            featuredArticleIds={featuredArticleIds}
+            onUpdateFeaturedArticles={handleUpdateFeaturedArticles}
+          />
+        )}
+      </main>
+
+      <Footer />
+    </div>
+  );
+}
+
+export default App;
