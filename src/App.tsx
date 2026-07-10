@@ -49,41 +49,57 @@ function App() {
         if (error) throw error;
 
         if (data && data.length > 0) {
-          // DB에 데이터가 존재하면 로컬 상태 갱신
-          setEvents(data as CalendarEvent[]);
-        } else {
-          // DB가 비어있는 최초 실행 시, 초기 Mock 데이터를 DB에 삽입 (벌크 업로드)
-          console.log('Supabase DB가 비어있어 초기 데이터를 업로드합니다.');
-          const cleanInitialEvents = initialEvents.map(e => ({
-            id: e.id,
-            title: e.title,
-            content: e.content || '',
-            date: e.date,
-            time: e.time || '10:00',
-            branch: e.branch,
-            media: e.media || ['네이버뉴스'],
-            status: e.status,
-            createdDate: e.createdDate || e.date,
-            attachmentType: e.attachmentType || 'none',
-            attachmentName: e.attachmentName || '',
-            category: e.category || '이벤트/소식',
-            mediaAttachments: e.mediaAttachments || [],
-            newsUrl: e.newsUrl || null,
-            articleCategory: e.articleCategory || null,
-            articleCategoryLabel: e.articleCategoryLabel || null,
-            categoryLabel: e.categoryLabel || null,
-            articleImage: e.articleImage || null
-          }));
+          // DB 데이터와 로컬 전용 이벤트를 병합 (덮어쓰지 않고 합치기)
+          const dbIds = new Set(data.map((e: CalendarEvent) => e.id));
+          const savedLocal = localStorage.getItem('calendarEvents');
+          const localEvents: CalendarEvent[] = savedLocal ? JSON.parse(savedLocal) : [];
+          // 로컬에만 있고 DB에 없는 이벤트 (아직 미싱크 이벤트)
+          const localOnlyEvents = localEvents.filter(e => !dbIds.has(e.id));
 
-          const { error: insertError } = await supabase
-            .from('etoos_news_events')
-            .insert(cleanInitialEvents);
-
-          if (insertError) {
-            console.error('초기 데이터 DB 업로드 실패:', insertError);
-          } else {
-            console.log('초기 데이터 DB 업로드 성공');
+          if (localOnlyEvents.length > 0) {
+            console.log(`로컬 전용 미동기화 이벤트 ${localOnlyEvents.length}건 → DB에 백필 중...`);
+            for (const evt of localOnlyEvents) {
+              // 핵심 컬럼만으로 안전하게 INSERT
+              await supabase.from('etoos_news_events').insert({
+                id: evt.id,
+                title: evt.title,
+                content: evt.content || '',
+                date: evt.date,
+                time: evt.time || '10:00',
+                branch: evt.branch,
+                media: evt.media || ['네이버뉴스'],
+                status: evt.status,
+                category: evt.category || '이벤트/소식',
+                mediaAttachments: evt.mediaAttachments || [],
+              }).single();
+            }
           }
+
+          // DB 데이터 + 로컬 전용 이벤트 병합 후 상태 갱신
+          const merged = [...data as CalendarEvent[], ...localOnlyEvents];
+          merged.sort((a, b) => a.date.localeCompare(b.date));
+          setEvents(merged);
+        } else {
+          // DB가 비어있는 최초 실행 시, 현재 로컬 데이터를 DB에 업로드
+          const savedLocal = localStorage.getItem('calendarEvents');
+          const localEvents: CalendarEvent[] = savedLocal ? JSON.parse(savedLocal) : initialEvents;
+          console.log(`Supabase DB가 비어있어 로컬 데이터 ${localEvents.length}건을 업로드합니다.`);
+
+          for (const evt of localEvents) {
+            await supabase.from('etoos_news_events').insert({
+              id: evt.id,
+              title: evt.title,
+              content: evt.content || '',
+              date: evt.date,
+              time: evt.time || '10:00',
+              branch: evt.branch,
+              media: evt.media || ['네이버뉴스'],
+              status: evt.status,
+              category: evt.category || '이벤트/소식',
+              mediaAttachments: evt.mediaAttachments || [],
+            });
+          }
+          console.log('로컬 데이터 DB 업로드 완료');
         }
       } catch (err) {
         console.error('Supabase 데이터 가져오기 실패, 로컬 백업 데이터를 사용합니다:', err);
@@ -94,7 +110,11 @@ function App() {
   }, []);
 
   // 송출 완료(completed) -> 송출 예정(approved) 일괄 일회성 마이그레이션 훅
+  // ※ localStorage 플래그로 최초 1회만 실행 (F5 시 반복 실행 방지)
   useEffect(() => {
+    const MIGRATION_KEY = 'migration_completed_to_approved_v1_done';
+    if (localStorage.getItem(MIGRATION_KEY)) return; // 이미 실행됨 → 스킵
+
     const migrateStatus = async () => {
       // 1. 로컬 상태 일괄 변경
       setEvents((prev) => {
@@ -119,6 +139,9 @@ function App() {
           console.error('Supabase DB 일괄 복원 오류:', err);
         }
       }
+
+      // 완료 플래그 저장 (다음 F5부터 스킵)
+      localStorage.setItem(MIGRATION_KEY, 'true');
     };
 
     migrateStatus();
