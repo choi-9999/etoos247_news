@@ -12,6 +12,34 @@ import './App.css';
 
 const initialEvents: CalendarEvent[] = initialEventsData as CalendarEvent[];
 
+type SupabaseEventRow = Record<string, unknown>;
+
+const getRowValue = <T,>(row: SupabaseEventRow, camelKey: string, dbKey: string, fallback: T): T => {
+  const value = row[camelKey] ?? row[dbKey];
+  return (value ?? fallback) as T;
+};
+
+const toCalendarEvent = (row: SupabaseEventRow): CalendarEvent => ({
+  id: getRowValue(row, 'id', 'id', ''),
+  title: getRowValue(row, 'title', 'title', ''),
+  content: getRowValue(row, 'content', 'content', ''),
+  date: getRowValue(row, 'date', 'date', ''),
+  time: getRowValue(row, 'time', 'time', '10:00'),
+  branch: getRowValue(row, 'branch', 'branch', ''),
+  media: getRowValue(row, 'media', 'media', []),
+  status: getRowValue(row, 'status', 'status', 'pending'),
+  createdDate: getRowValue(row, 'createdDate', 'createddate', ''),
+  attachmentType: getRowValue(row, 'attachmentType', 'attachmenttype', 'none'),
+  attachmentName: getRowValue(row, 'attachmentName', 'attachmentname', ''),
+  category: getRowValue(row, 'category', 'category', undefined),
+  mediaAttachments: getRowValue(row, 'mediaAttachments', 'mediaattachments', []),
+  newsUrl: getRowValue(row, 'newsUrl', 'newsurl', undefined),
+  articleCategory: getRowValue(row, 'articleCategory', 'articlecategory', undefined),
+  articleCategoryLabel: getRowValue(row, 'articleCategoryLabel', 'articlecategorylabel', undefined),
+  categoryLabel: getRowValue(row, 'categoryLabel', 'categorylabel', undefined),
+  articleImage: getRowValue(row, 'articleImage', 'articleimage', undefined),
+});
+
 function App() {
   const [activeTab, setActiveTab] = useState<string>('articles');
   const [events, setEvents] = useState<CalendarEvent[]>(() => {
@@ -54,7 +82,7 @@ function App() {
 
         if (data && data.length > 0) {
           // 오직 Supabase DB 데이터만 표시 (로컬 스토리지 병합 및 백필 생략)
-          setEvents(data as CalendarEvent[]);
+          setEvents(data.map(toCalendarEvent));
         }
       } catch (err) {
         console.error('Supabase 데이터 가져오기 실패, 기본 기사 데이터를 로드합니다:', err);
@@ -105,7 +133,15 @@ function App() {
           media: newEvent.media || ['네이버뉴스'],
           status: newEvent.status,
           category: newEvent.category || '이벤트/소식',
-          mediaAttachments: newEvent.mediaAttachments || [],
+          createddate: newEvent.createdDate || '',
+          attachmenttype: newEvent.attachmentType || 'none',
+          attachmentname: newEvent.attachmentName || '',
+          mediaattachments: newEvent.mediaAttachments || [],
+          newsurl: newEvent.newsUrl || null,
+          articlecategory: newEvent.articleCategory || null,
+          articlecategorylabel: newEvent.articleCategoryLabel || null,
+          categorylabel: newEvent.categoryLabel || null,
+          articleimage: newEvent.articleImage || null,
         };
 
         const { error: insertError } = await supabase
@@ -116,14 +152,14 @@ function App() {
 
         // 2단계: 확장 컬럼은 UPDATE로 덧붙이기 (컬럼 없으면 조용히 무시됨)
         const extendedPayload: Record<string, unknown> = {};
-        if (newEvent.createdDate) extendedPayload['createdDate'] = newEvent.createdDate;
-        if (newEvent.attachmentType) extendedPayload['attachmentType'] = newEvent.attachmentType;
-        if (newEvent.attachmentName !== undefined) extendedPayload['attachmentName'] = newEvent.attachmentName;
-        if (newEvent.newsUrl) extendedPayload['newsUrl'] = newEvent.newsUrl;
-        if (newEvent.articleCategory) extendedPayload['articleCategory'] = newEvent.articleCategory;
-        if (newEvent.articleCategoryLabel) extendedPayload['articleCategoryLabel'] = newEvent.articleCategoryLabel;
-        if (newEvent.categoryLabel) extendedPayload['categoryLabel'] = newEvent.categoryLabel;
-        if (newEvent.articleImage) extendedPayload['articleImage'] = newEvent.articleImage;
+        if (newEvent.createdDate) extendedPayload['createddate'] = newEvent.createdDate;
+        if (newEvent.attachmentType) extendedPayload['attachmenttype'] = newEvent.attachmentType;
+        if (newEvent.attachmentName !== undefined) extendedPayload['attachmentname'] = newEvent.attachmentName;
+        if (newEvent.newsUrl) extendedPayload['newsurl'] = newEvent.newsUrl;
+        if (newEvent.articleCategory) extendedPayload['articlecategory'] = newEvent.articleCategory;
+        if (newEvent.articleCategoryLabel) extendedPayload['articlecategorylabel'] = newEvent.articleCategoryLabel;
+        if (newEvent.categoryLabel) extendedPayload['categorylabel'] = newEvent.categoryLabel;
+        if (newEvent.articleImage) extendedPayload['articleimage'] = newEvent.articleImage;
 
         if (Object.keys(extendedPayload).length > 0) {
           await supabase
@@ -200,9 +236,9 @@ function App() {
           supabase
             .from('etoos_news_events')
             .update({
-              mediaAttachments: [],
-              attachmentType: 'none',
-              attachmentName: ''
+              mediaattachments: [],
+              attachmenttype: 'none',
+              attachmentname: ''
             })
             .eq('id', id)
         );
@@ -233,8 +269,8 @@ function App() {
           .from('etoos_news_events')
           .update({ 
             status: newStatus, 
-            newsUrl: newsUrl || (targetEvent ? targetEvent.newsUrl : null),
-            articleImage: articleImage || (targetEvent ? targetEvent.articleImage : null)
+            newsurl: newsUrl || (targetEvent ? targetEvent.newsUrl : null),
+            articleimage: articleImage || (targetEvent ? targetEvent.articleImage : null)
           })
           .eq('id', id);
         if (error) throw error;
