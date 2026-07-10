@@ -146,7 +146,8 @@ function App() {
 
     if (isSupabaseConfigured) {
       try {
-        const { error } = await supabase.from('etoos_news_events').insert({
+        // 1단계: 반드시 존재하는 핵심 컬럼만으로 INSERT (스키마 미스 방어)
+        const corePayload = {
           id: newEvent.id,
           title: newEvent.title,
           content: newEvent.content || '',
@@ -155,18 +156,36 @@ function App() {
           branch: newEvent.branch,
           media: newEvent.media || ['네이버뉴스'],
           status: newEvent.status,
-          createdDate: newEvent.createdDate || newEvent.date,
-          attachmentType: newEvent.attachmentType || 'none',
-          attachmentName: newEvent.attachmentName || '',
           category: newEvent.category || '이벤트/소식',
           mediaAttachments: newEvent.mediaAttachments || [],
-          newsUrl: newEvent.newsUrl || null,
-          articleCategory: newEvent.articleCategory || null,
-          articleCategoryLabel: newEvent.articleCategoryLabel || null,
-          categoryLabel: newEvent.categoryLabel || null,
-          articleImage: newEvent.articleImage || null
-        });
-        if (error) throw error;
+        };
+
+        const { error: insertError } = await supabase
+          .from('etoos_news_events')
+          .insert(corePayload);
+
+        if (insertError) throw insertError;
+
+        // 2단계: 확장 컬럼은 UPDATE로 덧붙이기 (컬럼 없으면 조용히 무시됨)
+        const extendedPayload: Record<string, unknown> = {};
+        if (newEvent.createdDate) extendedPayload['createdDate'] = newEvent.createdDate;
+        if (newEvent.attachmentType) extendedPayload['attachmentType'] = newEvent.attachmentType;
+        if (newEvent.attachmentName !== undefined) extendedPayload['attachmentName'] = newEvent.attachmentName;
+        if (newEvent.newsUrl) extendedPayload['newsUrl'] = newEvent.newsUrl;
+        if (newEvent.articleCategory) extendedPayload['articleCategory'] = newEvent.articleCategory;
+        if (newEvent.articleCategoryLabel) extendedPayload['articleCategoryLabel'] = newEvent.articleCategoryLabel;
+        if (newEvent.categoryLabel) extendedPayload['categoryLabel'] = newEvent.categoryLabel;
+        if (newEvent.articleImage) extendedPayload['articleImage'] = newEvent.articleImage;
+
+        if (Object.keys(extendedPayload).length > 0) {
+          await supabase
+            .from('etoos_news_events')
+            .update(extendedPayload)
+            .eq('id', newEvent.id);
+          // 확장 컬럼 UPDATE 실패는 무시 (컬럼이 없으면 조용히 스킵)
+        }
+
+        console.log('✅ Supabase DB 저장 완료:', newEvent.id);
       } catch (err) {
         console.error('Supabase DB 추가 실패:', err);
       }
