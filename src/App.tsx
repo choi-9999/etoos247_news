@@ -296,6 +296,24 @@ function App() {
     }
   };
 
+  const handleUpdateEventBranch = async (id: string, newBranch: string) => {
+    setEvents((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, branch: newBranch } : e))
+    );
+
+    if (isSupabaseConfigured) {
+      try {
+        const { error } = await supabase
+          .from('etoos_news_events')
+          .update({ branch: newBranch })
+          .eq('id', id);
+        if (error) throw error;
+      } catch (err) {
+        console.error('Supabase DB 지점 갱신 실패:', err);
+      }
+    }
+  };
+
   const handleUpdateFeaturedArticles = (ids: string[]) => {
     setFeaturedArticleIds(ids);
     localStorage.setItem('featuredArticleIds', JSON.stringify(ids));
@@ -323,6 +341,7 @@ function App() {
             onUpdateEventStatus={handleUpdateEventStatus}
             onUpdateEventDate={handleUpdateEventDate}
             onUpdateEventTitle={handleUpdateEventTitle}
+            onUpdateEventBranch={handleUpdateEventBranch}
             onCleanupPastEvents={handleCleanupPastEvents}
           />
         )}

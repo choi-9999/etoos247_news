@@ -41,6 +41,7 @@ interface CalendarViewProps {
   onUpdateEventStatus: (id: string, newStatus: 'pending' | 'approved' | 'completed' | 'rejected', newsUrl?: string, articleImage?: string) => void;
   onUpdateEventDate: (id: string, newDate: string) => void;
   onUpdateEventTitle: (id: string, newTitle: string) => void;
+  onUpdateEventBranch: (id: string, newBranch: string) => void;
   onCleanupPastEvents: (pastEventIds: string[], filesToDelete: string[]) => Promise<void>;
 }
 
@@ -53,6 +54,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   onUpdateEventStatus,
   onUpdateEventDate,
   onUpdateEventTitle,
+  onUpdateEventBranch,
   onCleanupPastEvents
 }) => {
   // Current date initialization to today
@@ -97,11 +99,21 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [editingTitleVal, setEditingTitleVal] = useState<string>('');
 
+  const [editingBranchEventId, setEditingBranchEventId] = useState<string | null>(null);
+  const [editingBranchVal, setEditingBranchVal] = useState<string>('');
+
   const handleSaveTitle = (id: string) => {
     if (editingTitleVal.trim()) {
       onUpdateEventTitle(id, editingTitleVal.trim());
     }
     setEditingEventId(null);
+  };
+
+  const handleSaveBranch = (id: string) => {
+    if (editingBranchVal.trim()) {
+      onUpdateEventBranch(id, editingBranchVal.trim());
+    }
+    setEditingBranchEventId(null);
   };
 
 
@@ -1155,7 +1167,47 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                           <div className="event-detail-meta">
                             <div className="meta-field">
                               <MapPin size={12} />
-                              <span>지점: <strong>{evt.branch}</strong></span>
+                              <span>지점: </span>
+                              {userRole === 'admin' ? (
+                                editingBranchEventId === evt.id ? (
+                                  <input
+                                    type="text"
+                                    className="admin-inline-input"
+                                    value={editingBranchVal}
+                                    onChange={(e) => setEditingBranchVal(e.target.value)}
+                                    onBlur={() => handleSaveBranch(evt.id)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleSaveBranch(evt.id);
+                                      if (e.key === 'Escape') setEditingBranchEventId(null);
+                                    }}
+                                    autoFocus
+                                    style={{
+                                      fontSize: '0.85rem',
+                                      padding: '2px 6px',
+                                      border: '1px solid var(--accent)',
+                                      borderRadius: '4px',
+                                      background: 'var(--bg-card)',
+                                      color: 'var(--text-primary)',
+                                      marginLeft: '4px',
+                                      width: '120px'
+                                    }}
+                                  />
+                                ) : (
+                                  <strong 
+                                    className="editable-admin-field"
+                                    onClick={() => {
+                                      setEditingBranchEventId(evt.id);
+                                      setEditingBranchVal(evt.branch);
+                                    }}
+                                    title="클릭하여 지점명 수정"
+                                    style={{ cursor: 'pointer', borderBottom: '1px dashed var(--accent)', paddingBottom: '1px', marginLeft: '4px' }}
+                                  >
+                                    {evt.branch} ✏️
+                                  </strong>
+                                )
+                              ) : (
+                                <strong style={{ marginLeft: '4px' }}>{evt.branch}</strong>
+                              )}
                             </div>
                             <div className="meta-field">
                               <Clock size={12} />
@@ -1166,55 +1218,44 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                         {userRole === 'admin' && (
                           <div className="admin-approval-panel">
                             <div className="admin-approval-title">본사 기사 결재 및 송출 관리</div>
-                            <div className="admin-approval-actions">
-                              {evt.status === 'pending' && (
-                                <>
-                                  <button 
-                                    type="button"
-                                    className="btn btn-approve"
-                                    onClick={() => onUpdateEventStatus(evt.id, 'approved')}
-                                  >
-                                    송출 승인
-                                  </button>
-                                  <button 
-                                    type="button"
-                                    className="btn btn-reject"
-                                    onClick={() => onUpdateEventStatus(evt.id, 'rejected')}
-                                  >
-                                    반려
-                                  </button>
-                                </>
-                              )}
-                              {evt.status === 'approved' && (
-                                <button 
-                                  type="button"
-                                  className="btn btn-complete"
-                                  onClick={() => {
+                            <div className="admin-approval-actions" style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
+                              <select 
+                                className="admin-status-dropdown"
+                                value={evt.status}
+                                onChange={(e) => {
+                                  const newStatus = e.target.value as any;
+                                  if (newStatus === 'completed') {
                                     setCompleteNewsUrl('');
                                     setCompleteImageUrl('');
                                     setCompletionModal({
                                       isOpen: true,
                                       eventId: evt.id
                                     });
-                                  }}
-                                >
-                                  송출 및 보도 완료
-                                </button>
-                              )}
-                              {evt.status === 'rejected' && (
-                                <button 
-                                  type="button"
-                                  className="btn btn-reset"
-                                  onClick={() => onUpdateEventStatus(evt.id, 'pending')}
-                                >
-                                  다시 대기 상태로
-                                </button>
-                              )}
-                              {evt.status === 'completed' && (
-                                <span className="admin-status-message success">
-                                  ✓ 해당 기사는 매체에 정상 송출 및 보도가 완료되었습니다.
-                                </span>
-                              )}
+                                  } else {
+                                    onUpdateEventStatus(evt.id, newStatus);
+                                  }
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '10px',
+                                  fontSize: '0.9rem',
+                                  fontWeight: '600',
+                                  borderRadius: '8px',
+                                  border: '1px solid var(--accent)',
+                                  background: 'var(--bg-card)',
+                                  color: 'var(--text-primary)',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <option value="pending">⏳ 승인대기 (pending)</option>
+                                <option value="approved">🟢 송출예정 (approved)</option>
+                                <option value="completed">📰 송출완료 (completed)</option>
+                                <option value="rejected">❌ 반려 (rejected)</option>
+                              </select>
+                              <div className="admin-status-help" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                * 상태 값을 변경하면 Supabase 및 캘린더 화면에 실시간으로 반영됩니다.<br />
+                                * '송출완료'를 선택하면 실제 보도 기사 URL을 등록할 수 있는 창이 나타납니다.
+                              </div>
                             </div>
                           </div>
                         )}
