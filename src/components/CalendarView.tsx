@@ -186,7 +186,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     const todayStr = `${y}-${m}-${d}`;
     const targetDate = selectedDateStr || todayStr;
 
-    if (targetDate < todayStr) {
+    if (targetDate < todayStr && userRole !== 'admin') {
       showAlert('오늘 이전의 날짜에는 송출 요청을 등록할 수 없습니다.');
       return;
     }
@@ -314,7 +314,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     const m = String(today.getMonth() + 1).padStart(2, '0');
     const d = String(today.getDate()).padStart(2, '0');
     const todayStr = `${y}-${m}-${d}`;
-    if (newDateInput < todayStr) {
+    if (newDateInput < todayStr && userRole !== 'admin') {
       showAlert('오늘 이전의 날짜에는 송출 요청을 등록할 수 없습니다.');
       return;
     }
