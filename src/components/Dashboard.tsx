@@ -24,14 +24,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const completionRate = totalEvents > 0 ? ((completedEvents / totalEvents) * 100).toFixed(1) : '0.0';
 
-  // Calculate this month's count (Current date context is 2026-06-12)
-  const currentYearMonth = '2026-06';
+  const now = new Date();
+  const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const currentMonthLabel = `${now.getMonth() + 1}월`;
   const thisMonthEvents = events.filter(e => e.date.startsWith(currentYearMonth)).length;
 
   const hasAttachmentEvents = events.filter(e => e.attachmentType && e.attachmentType !== 'none').length;
   const attachmentRate = totalEvents > 0 ? ((hasAttachmentEvents / totalEvents) * 100).toFixed(1) : '0.0';
 
-  // 2. Status Donut Chart Calculations (SVG)
+  // 2. Status Donut Chart Calculations
   const statuses = [
     { label: '송출 완료', count: completedEvents, color: '#3b82f6', key: 'completed' },
     { label: '승인 완료', count: approvedEvents, color: '#10b981', key: 'approved' },
@@ -55,18 +56,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
       };
     });
 
-  // 3. Monthly Trend Calculations (January to June 2026)
+  const donutGradient = statusTotal > 0
+    ? `conic-gradient(${donutSlices
+        .map(slice => `${slice.color} ${slice.startPercent}% ${slice.startPercent + slice.percentage}%`)
+        .join(', ')})`
+    : 'conic-gradient(rgba(148, 163, 184, 0.16) 0 100%)';
+
+  // 3. Monthly Trend Calculations (completed articles, January to June 2026)
   const months = ['01', '02', '03', '04', '05', '06'];
   const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월'];
   const monthlyCounts = months.map(m => {
-    return events.filter(e => e.date.startsWith(`2026-${m}`)).length;
+    return events.filter(e => e.status === 'completed' && e.date.startsWith(`2026-${m}`)).length;
   });
 
   const maxMonthCount = Math.max(...monthlyCounts, 1);
-  const chartHeight = 140;
-  const chartWidth = 500;
-  const paddingX = 40;
-  const paddingY = 20;
+  const chartHeight = 180;
+  const chartWidth = 560;
+  const paddingX = 44;
+  const paddingY = 32;
 
   // Generate SVG Points for Line Chart
   const points = monthlyCounts.map((count, index) => {
@@ -75,8 +82,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return { x, y, count };
   });
 
-  const pathD = points.length > 0 
-    ? `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ') 
+  const pathD = points.length > 0
+    ? points.reduce((path, point, index) => {
+        if (index === 0) return `M ${point.x} ${point.y}`;
+        const previous = points[index - 1];
+        const controlX = (previous.x + point.x) / 2;
+        return `${path} C ${controlX} ${previous.y}, ${controlX} ${point.y}, ${point.x} ${point.y}`;
+      }, '')
     : '';
 
   // Generate Area Path for Line Chart Gradient
@@ -171,7 +183,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <TrendingUp size={20} />
           </div>
           <div className="kpi-details">
-            <span className="kpi-label">당월(6월) 송출 진행 건수</span>
+            <span className="kpi-label">당월({currentMonthLabel}) 송출 진행 건수</span>
             <h3 className="kpi-value">{thisMonthEvents} <span className="kpi-unit">건</span></h3>
           </div>
         </div>
@@ -194,37 +206,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <h3 className="chart-box-title">송출 요청 처리 상태</h3>
           <div className="donut-chart-container">
             <div className="donut-svg-wrapper">
-              <svg width="180" height="180" viewBox="0 0 100 100" className="donut-svg">
-                <circle cx="50" cy="50" r="40" fill="transparent" stroke="rgba(255,255,255,0.05)" strokeWidth="10" />
-                {donutSlices.map((slice, idx) => {
-                  const r = 40;
-                  const circ = 2 * Math.PI * r;
-                  const strokeLength = (slice.percentage / 100) * circ;
-                  
-                  // Accumulate dashoffset manually
-                  let previousPercentage = 0;
-                  for (let i = 0; i < idx; i++) {
-                    previousPercentage += donutSlices[i].percentage;
-                  }
-                  const offset = circ - (previousPercentage / 100) * circ;
-
-                  return (
-                    <circle
-                      key={slice.key}
-                      cx="50"
-                      cy="50"
-                      r={r}
-                      fill="transparent"
-                      stroke={slice.color}
-                      strokeWidth="10"
-                      strokeDasharray={`${strokeLength} ${circ}`}
-                      strokeDashoffset={offset}
-                      transform="rotate(-90 50 50)"
-                      className="donut-segment"
-                    />
-                  );
-                })}
-              </svg>
+              <div className="donut-ring" style={{ background: donutGradient }} aria-label="송출 요청 처리 상태 그래프"></div>
               <div className="donut-center-text">
                 <span className="center-value">{statusTotal}</span>
                 <span className="center-label">전체 요청</span>
@@ -252,30 +234,40 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <svg width="100%" height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`} preserveAspectRatio="none" className="line-svg">
               <defs>
                 <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
+                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.28" />
+                  <stop offset="55%" stopColor="#60a5fa" stopOpacity="0.12" />
                   <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
               
               {/* Grid Lines */}
-              <line x1={paddingX} y1={paddingY} x2={chartWidth - paddingX} y2={paddingY} stroke="rgba(255,255,255,0.05)" strokeDasharray="3,3" />
-              <line x1={paddingX} y1={chartHeight / 2} x2={chartWidth - paddingX} y2={chartHeight / 2} stroke="rgba(255,255,255,0.05)" strokeDasharray="3,3" />
-              <line x1={paddingX} y1={chartHeight - paddingY} x2={chartWidth - paddingX} y2={chartHeight - paddingY} stroke="rgba(255,255,255,0.1)" />
+              {[paddingY, chartHeight / 2, chartHeight - paddingY].map((y, idx) => (
+                <line
+                  key={y}
+                  x1={paddingX}
+                  y1={y}
+                  x2={chartWidth - paddingX}
+                  y2={y}
+                  stroke={idx === 2 ? 'rgba(148, 163, 184, 0.28)' : 'rgba(148, 163, 184, 0.18)'}
+                  strokeDasharray={idx === 2 ? undefined : '4 6'}
+                />
+              ))}
 
               {/* Area path */}
               {areaD && <path d={areaD} fill="url(#chartGradient)" />}
               
               {/* Line path */}
-              {pathD && <path d={pathD} fill="none" stroke="#3b82f6" strokeWidth="2.5" className="trend-line-path" />}
+              {pathD && <path d={pathD} fill="none" stroke="#2563eb" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="trend-line-path" />}
 
               {/* Points & Labels */}
               {points.map((p, idx) => (
                 <g key={idx}>
-                  <circle cx={p.x} cy={p.y} r="4" fill="#3b82f6" stroke="#0f172a" strokeWidth="1.5" className="trend-node" />
-                  <text x={p.x} y={p.y - 10} textAnchor="middle" fill="var(--text-secondary)" fontSize="10" fontWeight="bold">
+                  <circle cx={p.x} cy={p.y} r="7" fill="rgba(37, 99, 235, 0.14)" className="trend-node-halo" />
+                  <circle cx={p.x} cy={p.y} r="4.5" fill="#ffffff" stroke="#2563eb" strokeWidth="2.4" className="trend-node" />
+                  <text x={p.x} y={p.y - 12} textAnchor="middle" fill="var(--text-primary)" fontSize="11" fontWeight="700">
                     {p.count}건
                   </text>
-                  <text x={p.x} y={chartHeight - 4} textAnchor="middle" fill="var(--text-muted)" fontSize="10">
+                  <text x={p.x} y={chartHeight - 6} textAnchor="middle" fill="var(--text-muted)" fontSize="11" fontWeight="600">
                     {monthNames[idx]}
                   </text>
                 </g>

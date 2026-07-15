@@ -76,7 +76,7 @@
 }
 
 .chart-box {
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 24px;
   display: flex;
   flex-direction: column;
@@ -108,34 +108,37 @@
 .donut-chart-container {
   display: flex;
   align-items: center;
-  justify-content: space-around;
-  gap: 20px;
-  flex-wrap: wrap;
+  justify-content: center;
+  gap: 44px;
   flex: 1;
 }
 
 .donut-svg-wrapper {
   position: relative;
-  width: 180px;
-  height: 180px;
+  width: 184px;
+  height: 184px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 auto;
 }
 
-.donut-svg {
-  transform: rotate(0deg);
-  transition: transform 0.5s ease;
+.donut-ring {
+  width: 164px;
+  height: 164px;
+  border-radius: 50%;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.14), 0 16px 34px rgba(15, 23, 42, 0.08);
 }
 
-.donut-segment {
-  transition: stroke-width 0.3s ease, filter 0.3s ease;
-  cursor: pointer;
-}
-
-.donut-segment:hover {
-  stroke-width: 12px;
-  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.15));
+.donut-ring::before {
+  content: '';
+  position: absolute;
+  inset: 19px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  box-shadow: inset 0 1px 8px rgba(15, 23, 42, 0.04);
 }
 
 .donut-center-text {
@@ -148,7 +151,7 @@
 }
 
 .center-value {
-  font-size: 1.8rem;
+  font-size: 2rem;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.1;
@@ -163,16 +166,18 @@
 .donut-legend {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   flex-shrink: 0;
-  min-width: 160px;
+  min-width: 210px;
 }
 
 .legend-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: 10px minmax(72px, 1fr) auto;
   align-items: center;
   gap: 8px;
   font-size: 0.8rem;
+  line-height: 1.2;
 }
 
 .legend-dot {
@@ -184,13 +189,14 @@
 
 .legend-label {
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .legend-count {
-  margin-left: auto;
   color: var(--text-primary);
-  font-weight: 600;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
 }
 
 /* Line Chart Styling */
@@ -199,17 +205,20 @@
   align-items: center;
   justify-content: center;
   flex: 1;
-  padding: 10px 0;
+  padding: 2px 0 0;
+  min-height: 190px;
 }
 
 .line-svg {
   overflow: visible;
+  display: block;
 }
 
 .trend-line-path {
   stroke-dasharray: 1000;
   stroke-dashoffset: 1000;
   animation: drawLine 1.5s ease-out forwards;
+  filter: drop-shadow(0 8px 12px rgba(37, 99, 235, 0.12));
 }
 
 .trend-node {
@@ -217,9 +226,24 @@
   cursor: pointer;
 }
 
+.trend-node-halo {
+  opacity: 0.9;
+}
+
 .trend-node:hover {
   r: 6;
-  fill: #ffffff;
+  fill: #eff6ff;
+}
+
+@media (max-width: 720px) {
+  .donut-chart-container {
+    gap: 24px;
+  }
+
+  .donut-legend {
+    width: 100%;
+    min-width: 0;
+  }
 }
 
 /* Branch Ranking styling */
@@ -572,6 +596,10 @@
 /* Light Theme Overrides for Dashboard */
 body.light-theme .donut-svg circle:first-child {
   stroke: rgba(0, 0, 0, 0.06) !important;
+}
+
+body.light-theme .donut-ring::before {
+  background: #ffffff;
 }
 
 body.light-theme .line-svg line {
