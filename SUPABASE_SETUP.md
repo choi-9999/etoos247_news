@@ -47,6 +47,24 @@ create policy "Allow public update for everyone" on etoos_news_events
 
 create policy "Allow public delete for everyone" on etoos_news_events
   for delete using (true);
+
+-- 4. site_settings 테이블 생성 (롤링 배너 대표 기사 등 사이트 공통 설정 저장)
+create table if not exists site_settings (
+  key text primary key,
+  value jsonb not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table site_settings enable row level security;
+
+create policy "Allow public read site settings" on site_settings
+  for select using (true);
+
+create policy "Allow public insert site settings" on site_settings
+  for insert with check (true);
+
+create policy "Allow public update site settings" on site_settings
+  for update using (true);
 ```
 
 ---

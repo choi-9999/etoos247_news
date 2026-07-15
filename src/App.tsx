@@ -10,6 +10,24 @@ import { supabase, isConfigured as isSupabaseConfigured } from './lib/supabaseCl
 import './App.css';
 
 type SupabaseEventRow = Record<string, unknown>;
+type SupabaseSettingRow = {
+  value?: unknown;
+};
+
+const FEATURED_ARTICLES_SETTING_KEY = 'featured_article_ids';
+
+const readLocalFeaturedArticleIds = (): string[] => {
+  try {
+    const saved = localStorage.getItem('featuredArticleIds');
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+};
+
+const parseFeaturedArticleIds = (value: unknown): string[] => {
+  return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [];
+};
 
 const getRowValue = <T,>(row: SupabaseEventRow, camelKey: string, dbKey: string, fallback: T): T => {
   const value = row[camelKey] ?? row[dbKey];
@@ -56,8 +74,7 @@ function App() {
   const [userRole, setUserRole] = useState<'admin' | 'branch'>('branch');
   const [userBranch] = useState<string>('서울강남점');
   const [featuredArticleIds, setFeaturedArticleIds] = useState<string[]>(() => {
-    const saved = localStorage.getItem('featuredArticleIds');
-    return saved ? JSON.parse(saved) : [];
+    return isSupabaseConfigured ? [] : readLocalFeaturedArticleIds();
   });
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const saved = localStorage.getItem('theme');
@@ -88,6 +105,39 @@ function App() {
     };
 
     fetchSupabaseEvents();
+  }, []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    let isMounted = true;
+
+    const fetchFeaturedArticleIds = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('site_settings')
+          .select('value')
+          .eq('key', FEATURED_ARTICLES_SETTING_KEY)
+          .maybeSingle<SupabaseSettingRow>();
+
+        if (error) throw error;
+
+        if (isMounted && data) {
+          setFeaturedArticleIds(parseFeaturedArticleIds(data.value));
+        }
+      } catch (err) {
+        console.error('Supabase 대표 기사 설정 가져오기 실패:', err);
+        if (isMounted) {
+          setFeaturedArticleIds(readLocalFeaturedArticleIds());
+        }
+      }
+    };
+
+    fetchFeaturedArticleIds();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
 
@@ -331,9 +381,32 @@ function App() {
     }
   };
 
-  const handleUpdateFeaturedArticles = (ids: string[]) => {
+  const handleUpdateFeaturedArticles = async (ids: string[]) => {
     setFeaturedArticleIds(ids);
-    localStorage.setItem('featuredArticleIds', JSON.stringify(ids));
+
+    if (!isSupabaseConfigured) {
+      localStorage.setItem('featuredArticleIds', JSON.stringify(ids));
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('site_settings')
+        .upsert(
+          {
+            key: FEATURED_ARTICLES_SETTING_KEY,
+            value: ids,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'key' }
+        );
+
+      if (error) throw error;
+      localStorage.removeItem('featuredArticleIds');
+    } catch (err) {
+      console.error('Supabase 대표 기사 설정 저장 실패:', err);
+      localStorage.setItem('featuredArticleIds', JSON.stringify(ids));
+    }
   };
 
   return (
