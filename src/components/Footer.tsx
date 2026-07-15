@@ -71,8 +71,8 @@ export const Footer: React.FC = () => {
                 if (e.target.value) window.open(e.target.value, '_blank');
               }}>
                 <option value="" disabled>패밀리 사이트</option>
-                <option value="https://www.etoos.com">이투스온라인</option>
                 <option value="https://247.etoos.com/index.do">이투스247학원</option>
+                <option value="https://etoos247-experience-info.vercel.app/">247체험단</option>
               </select>
             </div>
 

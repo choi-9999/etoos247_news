@@ -1,6 +1,6 @@
 import React from 'react';
 import type { CalendarEvent } from './CalendarView';
-import { FileText, CheckCircle, TrendingUp, Award, Layers } from 'lucide-react';
+import { FileText, CheckCircle, TrendingUp, Award } from 'lucide-react';
 import './Dashboard.css';
 
 interface DashboardProps {
@@ -29,9 +29,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const currentMonthLabel = `${now.getMonth() + 1}월`;
   const thisMonthEvents = events.filter(e => e.date.startsWith(currentYearMonth)).length;
-
-  const hasAttachmentEvents = events.filter(e => e.attachmentType && e.attachmentType !== 'none').length;
-  const attachmentRate = totalEvents > 0 ? ((hasAttachmentEvents / totalEvents) * 100).toFixed(1) : '0.0';
 
   // 2. Status Donut Chart Calculations
   const statuses = [
@@ -189,15 +186,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        <div className="kpi-card glass">
-          <div className="kpi-icon-wrapper" style={{ background: 'rgba(6, 182, 212, 0.1)', color: '#06b6d4' }}>
-            <Layers size={20} />
-          </div>
-          <div className="kpi-details">
-            <span className="kpi-label">보도 이미지/자료 첨부율</span>
-            <h3 className="kpi-value">{attachmentRate} <span className="kpi-unit">%</span></h3>
-          </div>
-        </div>
       </div>
 
       {/* Charts Layout */}
