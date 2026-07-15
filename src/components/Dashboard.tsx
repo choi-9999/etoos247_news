@@ -25,6 +25,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const completionRate = totalEvents > 0 ? ((completedEvents / totalEvents) * 100).toFixed(1) : '0.0';
 
   const now = new Date();
+  const dashboardYear = now.getFullYear();
   const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const currentMonthLabel = `${now.getMonth() + 1}월`;
   const thisMonthEvents = events.filter(e => e.date.startsWith(currentYearMonth)).length;
@@ -62,16 +63,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
         .join(', ')})`
     : 'conic-gradient(rgba(148, 163, 184, 0.16) 0 100%)';
 
-  // 3. Monthly Trend Calculations (completed articles, January to June 2026)
-  const months = ['01', '02', '03', '04', '05', '06'];
-  const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월'];
+  // 3. Monthly Trend Calculations (completed articles, full year)
+  const months = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0'));
+  const monthNames = months.map(month => `${Number(month)}월`);
   const monthlyCounts = months.map(m => {
-    return events.filter(e => e.status === 'completed' && e.date.startsWith(`2026-${m}`)).length;
+    return events.filter(e => e.status === 'completed' && e.date.startsWith(`${dashboardYear}-${m}`)).length;
   });
 
   const maxMonthCount = Math.max(...monthlyCounts, 1);
   const chartHeight = 180;
-  const chartWidth = 560;
+  const chartWidth = 840;
   const paddingX = 44;
   const paddingY = 32;
 
@@ -229,7 +230,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         <div className="chart-box glass">
-          <h3 className="chart-box-title">월별 기사 송출 추이 (2026년 상반기)</h3>
+          <h3 className="chart-box-title">월별 기사 송출 추이 ({dashboardYear}년)</h3>
           <div className="line-chart-container">
             <svg width="100%" height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`} preserveAspectRatio="none" className="line-svg">
               <defs>

@@ -7,10 +7,7 @@ import { AIWriter } from './components/AIWriter';
 import { ArticleShowcase } from './components/ArticleShowcase';
 import { Dashboard } from './components/Dashboard';
 import { supabase, isConfigured as isSupabaseConfigured } from './lib/supabaseClient';
-import initialEventsData from './data/eventsData.json';
 import './App.css';
-
-const initialEvents: CalendarEvent[] = initialEventsData as CalendarEvent[];
 
 type SupabaseEventRow = Record<string, unknown>;
 
@@ -52,9 +49,9 @@ function App() {
 
     if (!isConfigured) {
       const saved = localStorage.getItem('calendarEvents');
-      return saved ? JSON.parse(saved) : initialEvents;
+      return saved ? JSON.parse(saved) : [];
     }
-    return initialEvents;
+    return [];
   });
   const [userRole, setUserRole] = useState<'admin' | 'branch'>('branch');
   const [userBranch] = useState<string>('서울강남점');
@@ -86,7 +83,7 @@ function App() {
         }
       } catch (err) {
         console.error('Supabase 데이터 가져오기 실패, 기본 기사 데이터를 로드합니다:', err);
-        setEvents(initialEvents);
+        setEvents([]);
       }
     };
 

@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, ChevronRight, ChevronLeft, X, Copy, Sparkles, MapPin, Calendar as CalendarIcon, FileText, ArrowRight } from 'lucide-react';
-import eventsData from '../data/eventsData.json';
 import type { CalendarEvent } from './CalendarView';
 import './ArticleShowcase.css';
 
@@ -91,7 +90,7 @@ export const ArticleShowcase: React.FC<ArticleShowcaseProps> = ({ setActiveTab, 
   const mainFeedRef = useRef<HTMLDivElement>(null);
 
   // 현재 송출 완료된 기사 데이터(status === 'completed')를 불러와 동적 매핑
-  const mockArticles: Article[] = (events || (eventsData as CalendarEvent[]))
+  const articles: Article[] = events
     .filter(evt => evt.status === 'completed')
     .map((evt): Article => {
       const categoryLabel = evt.category || '이벤트/소식';
@@ -125,7 +124,7 @@ export const ArticleShowcase: React.FC<ArticleShowcaseProps> = ({ setActiveTab, 
     .sort((a, b) => b.date.localeCompare(a.date));
 
   // Filter & Search logic
-  const filteredArticles = mockArticles.filter(art => {
+  const filteredArticles = articles.filter(art => {
     const matchesSearch = 
       art.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
       art.content.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -137,14 +136,14 @@ export const ArticleShowcase: React.FC<ArticleShowcaseProps> = ({ setActiveTab, 
   });
 
   // 4. Featured Carousel용 대표 기사 추출 (본사 대시보드 선정작 반영, 미지정 시 최신 3건 폴백)
-  let featuredArticles = mockArticles.filter(art => featuredArticleIds.includes(art.id));
+  let featuredArticles = articles.filter(art => featuredArticleIds.includes(art.id));
   featuredArticles.sort((a, b) => featuredArticleIds.indexOf(a.id) - featuredArticleIds.indexOf(b.id));
   if (featuredArticles.length === 0) {
-    featuredArticles = mockArticles.slice(0, Math.min(mockArticles.length, 3));
+    featuredArticles = articles.slice(0, Math.min(articles.length, 3));
   }
 
   // Top Visual용 대형 카드 데이터 매핑 (기사 데이터 중 최신 8건 선정)
-  const topVisualArticles = mockArticles.slice(0, Math.min(mockArticles.length, 8));
+  const topVisualArticles = articles.slice(0, Math.min(articles.length, 8));
 
   // 대표 기사 자동 롤링 타이머 (4.5초 간격으로 우측에서 좌측으로 이동)
   useEffect(() => {
